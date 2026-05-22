@@ -1,0 +1,1858 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Yandex Music Downloader</title>
+<style>
+/* ═══════════════════════════════════════════════
+   TOKENS & RESET
+═══════════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+  --bg-void:    #08080a;
+  --bg-base:    #0d0d10;
+  --bg-card:    #13131a;
+  --bg-surface: #1a1a24;
+  --bg-hover:   #22222e;
+  --bg-active:  #2a2a3a;
+
+  --accent:     #ff4e6a;
+  --accent-dim: rgba(255, 78, 106, 0.15);
+  --accent-glow:rgba(255, 78, 106, 0.35);
+  --gold:       #ffd166;
+  --gold-dim:   rgba(255, 209, 102, 0.12);
+  --teal:       #06d6a0;
+  --teal-dim:   rgba(6, 214, 160, 0.12);
+  --blue:       #4895ef;
+
+  --text-primary:   #f0f0f8;
+  --text-secondary: #8888aa;
+  --text-muted:     #44445a;
+  --text-accent:    #ff4e6a;
+
+  --border:     rgba(255,255,255,0.06);
+  --border-light: rgba(255,255,255,0.1);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --shadow-card: 0 4px 24px rgba(0,0,0,0.4);
+  --shadow-glow: 0 0 40px rgba(255,78,106,0.2);
+
+  --font-body: 'Manrope', sans-serif;
+  --font-mono: 'Space Mono', monospace;
+
+  --sidebar-w: 220px;
+  --titlebar-h: 40px;
+  --transition: 200ms cubic-bezier(0.4,0,0.2,1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ═══════════════════════════════════════════════
+   TITLEBAR
+═══════════════════════════════════════════════ */
+#titlebar {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--titlebar-h);
+  background: rgba(8,8,10,0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  -webkit-app-region: drag;
+  z-index: 1000;
+  padding: 0 16px;
+}
+
+.titlebar-left {
+  display: flex; align-items: center; gap: 10px;
+  -webkit-app-region: no-drag;
+}
+
+.win-btn {
+  width: 12px; height: 12px; border-radius: 50%; border: none;
+  cursor: pointer; transition: opacity var(--transition);
+  -webkit-app-region: no-drag;
+}
+.win-btn:hover { opacity: 0.8; }
+.win-btn.close { background: #ff5f56; }
+.win-btn.minimize { background: #febc2e; }
+.win-btn.maximize { background: #28c840; }
+
+.titlebar-title {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  font-size: 12px; font-weight: 600; letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.titlebar-right {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+/* ═══════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════ */
+#app {
+  display: flex;
+  height: 100vh;
+  padding-top: var(--titlebar-h);
+}
+
+/* ═══════════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════════ */
+#sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  background: var(--bg-base);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  padding: 16px 0;
+  overflow: hidden;
+}
+
+.sidebar-logo {
+  padding: 8px 20px 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+
+.logo-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--accent), #ff8c69);
+  border-radius: 10px;
+  display: grid; place-items: center;
+  font-size: 16px;
+  box-shadow: 0 4px 16px var(--accent-glow);
+  flex-shrink: 0;
+}
+
+.logo-text {
+  font-size: 13px; font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.logo-text span { color: var(--accent); }
+
+.sidebar-section {
+  padding: 0 10px;
+  margin-bottom: 4px;
+}
+
+.sidebar-section-title {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0 10px;
+  margin-bottom: 4px;
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border-radius: var(--radius-sm);
+  cursor: pointer; transition: all var(--transition);
+  color: var(--text-secondary);
+  font-weight: 500; font-size: 13px;
+  position: relative;
+}
+
+.nav-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.nav-item.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.nav-item.active::before {
+  content: '';
+  position: absolute; left: -10px;
+  top: 50%; transform: translateY(-50%);
+  width: 3px; height: 20px;
+  background: var(--accent);
+  border-radius: 0 3px 3px 0;
+}
+
+.nav-icon {
+  width: 20px; height: 20px;
+  display: grid; place-items: center;
+  flex-shrink: 0; font-size: 16px;
+  opacity: 0.8;
+}
+
+.nav-badge {
+  margin-left: auto;
+  background: var(--accent);
+  color: white;
+  font-size: 10px; font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 99px;
+  min-width: 18px; text-align: center;
+}
+
+.sidebar-divider {
+  height: 1px; background: var(--border);
+  margin: 12px 20px;
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+  padding: 0 10px;
+}
+
+/* User card */
+.user-card {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.user-card:hover { border-color: var(--border-light); }
+
+.user-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  display: grid; place-items: center;
+  font-size: 14px; font-weight: 700; color: white;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.user-info { flex: 1; min-width: 0; }
+.user-name { font-size: 12px; font-weight: 700; truncate: clip; }
+.user-sub {
+  font-size: 10px; color: var(--text-secondary);
+  display: flex; align-items: center; gap: 4px;
+}
+.plus-badge {
+  font-size: 9px; font-weight: 800;
+  background: var(--gold);
+  color: #000; padding: 1px 4px; border-radius: 3px;
+}
+
+/* ═══════════════════════════════════════════════
+   MAIN CONTENT
+═══════════════════════════════════════════════ */
+#main {
+  flex: 1; overflow-y: auto;
+  background: var(--bg-base);
+  position: relative;
+}
+
+#main::-webkit-scrollbar { width: 4px; }
+#main::-webkit-scrollbar-track { background: transparent; }
+#main::-webkit-scrollbar-thumb { background: var(--bg-active); border-radius: 4px; }
+
+/* ═══════════════════════════════════════════════
+   PAGES
+═══════════════════════════════════════════════ */
+.page { display: none; padding: 28px; }
+.page.active { display: block; }
+
+.page-header {
+  display: flex; align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.page-title {
+  font-size: 24px; font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.page-subtitle {
+  font-size: 13px; color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+/* ═══════════════════════════════════════════════
+   LOGIN PAGE
+═══════════════════════════════════════════════ */
+#page-login {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: calc(100vh - var(--titlebar-h));
+  padding: 40px;
+  text-align: center;
+}
+
+.login-hero {
+  position: relative; margin-bottom: 40px;
+}
+
+.login-logo {
+  width: 80px; height: 80px;
+  background: linear-gradient(135deg, var(--accent), #ff8c69);
+  border-radius: 24px;
+  display: grid; place-items: center;
+  font-size: 40px;
+  margin: 0 auto 20px;
+  box-shadow: 0 8px 40px var(--accent-glow);
+}
+
+.login-title {
+  font-size: 28px; font-weight: 800;
+  letter-spacing: -0.04em;
+  margin-bottom: 8px;
+}
+.login-title span { color: var(--accent); }
+
+.login-desc {
+  color: var(--text-secondary);
+  font-size: 14px; line-height: 1.6;
+  max-width: 340px; margin: 0 auto 32px;
+}
+
+.login-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 28px; width: 100%; max-width: 400px;
+  box-shadow: var(--shadow-card);
+}
+
+.field-label {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 8px; display: block;
+}
+
+.field-hint {
+  font-size: 12px; color: var(--text-muted);
+  margin-top: 8px; line-height: 1.5;
+}
+.field-hint a { color: var(--accent); text-decoration: none; }
+
+.input-wrap {
+  position: relative;
+}
+
+input[type="text"], input[type="password"] {
+  width: 100%; padding: 12px 14px;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  outline: none;
+  -webkit-user-select: text;
+}
+input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+input::placeholder { color: var(--text-muted); }
+
+.input-toggle {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  cursor: pointer; color: var(--text-muted); font-size: 16px;
+  transition: color var(--transition);
+}
+.input-toggle:hover { color: var(--text-primary); }
+
+/* ═══════════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════════ */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; padding: 11px 20px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body); font-size: 13px; font-weight: 700;
+  cursor: pointer; border: none; transition: all var(--transition);
+  position: relative; overflow: hidden;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 4px 20px var(--accent-glow);
+}
+.btn-primary:hover {
+  background: #ff3555;
+  box-shadow: 0 6px 28px var(--accent-glow);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: translateY(0); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border);
+}
+.btn-ghost:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-light);
+}
+
+.btn-teal {
+  background: var(--teal-dim);
+  color: var(--teal);
+  border: 1.5px solid rgba(6,214,160,0.25);
+}
+.btn-teal:hover { background: rgba(6,214,160,0.2); }
+
+.btn-sm { padding: 7px 14px; font-size: 12px; }
+.btn-lg { padding: 14px 28px; font-size: 15px; width: 100%; }
+
+.btn:disabled { opacity: 0.4; pointer-events: none; }
+
+.btn-icon {
+  width: 32px; height: 32px; padding: 0;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+.btn-icon:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+/* ═══════════════════════════════════════════════
+   SEARCH PAGE
+═══════════════════════════════════════════════ */
+.search-bar {
+  display: flex; gap: 10px; margin-bottom: 20px;
+}
+
+.search-input-wrap {
+  flex: 1; position: relative;
+}
+
+.search-icon {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  color: var(--text-muted); font-size: 16px; pointer-events: none;
+}
+
+.search-input {
+  padding-left: 42px !important;
+  font-family: var(--font-body) !important;
+  font-size: 14px !important;
+}
+
+.type-tabs {
+  display: flex; gap: 6px; margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.type-tab {
+  padding: 6px 14px; border-radius: 99px;
+  font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all var(--transition);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+.type-tab.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: rgba(255,78,106,0.3);
+}
+
+/* ═══════════════════════════════════════════════
+   URL INPUT PAGE
+═══════════════════════════════════════════════ */
+.url-examples {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;
+}
+
+.url-chip {
+  font-size: 11px; font-family: var(--font-mono);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 8px;
+  color: var(--text-muted); cursor: pointer;
+  transition: all var(--transition);
+}
+.url-chip:hover { color: var(--text-primary); border-color: var(--border-light); }
+
+/* ═══════════════════════════════════════════════
+   TRACK GRID & LIST
+═══════════════════════════════════════════════ */
+.tracks-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.tracks-count {
+  font-size: 13px; color: var(--text-secondary);
+}
+
+.tracks-actions {
+  display: flex; gap: 8px;
+}
+
+.track-list { display: flex; flex-direction: column; gap: 3px; }
+
+.track-item {
+  display: grid;
+  grid-template-columns: 40px 48px 1fr auto auto;
+  align-items: center; gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition);
+  border: 1px solid transparent;
+  position: relative;
+}
+
+.track-item:hover { background: var(--bg-hover); border-color: var(--border); }
+.track-item.selected { background: var(--accent-dim); border-color: rgba(255,78,106,0.2); }
+.track-item.downloading { background: rgba(6,214,160,0.05); }
+.track-item.done { background: rgba(6,214,160,0.08); }
+.track-item.error { background: rgba(255,78,106,0.05); }
+
+.track-check {
+  width: 18px; height: 18px;
+  border: 1.5px solid var(--text-muted);
+  border-radius: 5px;
+  display: grid; place-items: center;
+  font-size: 11px; color: transparent;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+
+.track-item.selected .track-check {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.track-cover {
+  width: 40px; height: 40px; border-radius: 8px;
+  background: var(--bg-surface);
+  overflow: hidden; flex-shrink: 0;
+  position: relative;
+}
+.track-cover img {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+}
+.track-cover-placeholder {
+  width: 100%; height: 100%;
+  display: grid; place-items: center;
+  font-size: 18px; color: var(--text-muted);
+}
+
+.track-info { min-width: 0; }
+.track-title {
+  font-size: 13px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.track-artist {
+  font-size: 12px; color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.track-duration {
+  font-size: 12px; color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+
+.track-actions { display: flex; gap: 6px; }
+
+/* Download status badge */
+.status-badge {
+  font-size: 11px; font-weight: 700;
+  padding: 3px 8px; border-radius: 99px;
+  white-space: nowrap;
+}
+.status-badge.done    { background: var(--teal-dim); color: var(--teal); }
+.status-badge.error   { background: var(--accent-dim); color: var(--accent); }
+.status-badge.queued  { background: var(--gold-dim); color: var(--gold); }
+.status-badge.downloading { background: rgba(72,149,239,0.15); color: var(--blue); }
+
+/* Progress bar */
+.track-progress {
+  position: absolute; bottom: 0; left: 12px; right: 12px;
+  height: 2px; background: var(--border);
+  border-radius: 1px; overflow: hidden;
+}
+.track-progress-fill {
+  height: 100%;
+  background: var(--blue);
+  border-radius: 1px;
+  transition: width 0.3s;
+}
+
+/* ═══════════════════════════════════════════════
+   EMPTY STATE
+═══════════════════════════════════════════════ */
+.empty-state {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 280px; text-align: center;
+  gap: 12px;
+}
+
+.empty-icon { font-size: 40px; opacity: 0.25; }
+.empty-title { font-size: 16px; font-weight: 700; }
+.empty-desc { font-size: 13px; color: var(--text-secondary); max-width: 280px; line-height: 1.6; }
+
+/* ═══════════════════════════════════════════════
+   DOWNLOADS PAGE
+═══════════════════════════════════════════════ */
+.dl-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  margin-bottom: 24px;
+}
+
+.dl-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+.dl-stat-value {
+  font-size: 28px; font-weight: 800;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.dl-stat-value.accent { color: var(--accent); }
+.dl-stat-value.teal   { color: var(--teal); }
+.dl-stat-value.gold   { color: var(--gold); }
+.dl-stat-label {
+  font-size: 11px; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  margin-top: 4px;
+}
+
+/* ═══════════════════════════════════════════════
+   SETTINGS PAGE
+═══════════════════════════════════════════════ */
+.settings-group {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.settings-group-title {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-row {
+  display: flex; align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+.settings-row:last-child { border-bottom: none; }
+
+.settings-row-info { flex: 1; min-width: 0; }
+.settings-row-label { font-size: 13px; font-weight: 600; }
+.settings-row-desc  { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+.settings-row-value {
+  font-size: 12px; color: var(--text-muted);
+  font-family: var(--font-mono);
+  max-width: 200px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Toggle switch */
+.toggle {
+  width: 38px; height: 22px;
+  background: var(--bg-active);
+  border-radius: 11px;
+  position: relative; cursor: pointer;
+  transition: background var(--transition);
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--accent); }
+.toggle::after {
+  content: '';
+  width: 16px; height: 16px;
+  background: white;
+  border-radius: 50%;
+  position: absolute; top: 3px; left: 3px;
+  transition: transform var(--transition);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+.toggle.on::after { transform: translateX(16px); }
+
+/* Select */
+select {
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 12px; font-weight: 600;
+  padding: 7px 10px; cursor: pointer;
+  outline: none; transition: border-color var(--transition);
+  -webkit-user-select: none;
+}
+select:focus { border-color: var(--accent); }
+select option { background: var(--bg-card); }
+
+/* ═══════════════════════════════════════════════
+   TOASTS
+═══════════════════════════════════════════════ */
+#toast-container {
+  position: fixed; bottom: 24px; right: 24px;
+  display: flex; flex-direction: column; gap: 8px;
+  z-index: 9999;
+}
+
+.toast {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  min-width: 260px; max-width: 380px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  animation: toastIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  font-size: 13px;
+}
+.toast.success { border-left: 3px solid var(--teal); }
+.toast.error   { border-left: 3px solid var(--accent); }
+.toast.info    { border-left: 3px solid var(--blue); }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(20px) scale(0.95); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes toastOut {
+  to { opacity: 0; transform: translateX(20px) scale(0.9); }
+}
+.toast.hiding { animation: toastOut 0.2s ease forwards; }
+
+/* ═══════════════════════════════════════════════
+   LOADING SPINNER
+═══════════════════════════════════════════════ */
+.spinner {
+  width: 20px; height: 20px;
+  border: 2.5px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══════════════════════════════════════════════
+   WELCOME / HOME
+═══════════════════════════════════════════════ */
+.home-hero {
+  background: linear-gradient(135deg, rgba(255,78,106,0.15), rgba(72,149,239,0.08));
+  border: 1px solid rgba(255,78,106,0.2);
+  border-radius: var(--radius-xl);
+  padding: 28px 32px;
+  margin-bottom: 24px;
+  position: relative; overflow: hidden;
+}
+.home-hero::before {
+  content: '';
+  position: absolute; top: -50%; right: -20%;
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(255,78,106,0.12), transparent 70%);
+  pointer-events: none;
+}
+.home-hero-title { font-size: 22px; font-weight: 800; letter-spacing: -0.04em; }
+.home-hero-sub { font-size: 13px; color: var(--text-secondary); margin-top: 6px; }
+.home-hero-actions { display: flex; gap: 10px; margin-top: 20px; }
+
+.quick-cards {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+}
+
+.quick-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.quick-card:hover {
+  border-color: var(--border-light);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+.quick-card-icon { font-size: 24px; margin-bottom: 10px; }
+.quick-card-title { font-size: 13px; font-weight: 700; }
+.quick-card-desc  { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
+
+/* ═══════════════════════════════════════════════
+   MISC UTILS
+═══════════════════════════════════════════════ */
+.mt-4  { margin-top: 4px; }
+.mt-8  { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.mt-20 { margin-top: 20px; }
+.gap-8 { gap: 8px; }
+.flex  { display: flex; }
+.flex-center { display: flex; align-items: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.hidden { display: none !important; }
+.text-accent { color: var(--accent); }
+.text-teal   { color: var(--teal); }
+.text-muted  { color: var(--text-muted); }
+.font-mono   { font-family: var(--font-mono); }
+
+/* scrollable content area */
+.scroll-area {
+  overflow-y: auto; max-height: calc(100vh - var(--titlebar-h) - 280px);
+}
+.scroll-area::-webkit-scrollbar { width: 4px; }
+.scroll-area::-webkit-scrollbar-thumb { background: var(--bg-active); border-radius: 4px; }
+
+/* Login tabs */
+.login-tab {
+  flex: 1; padding: 8px; border: none;
+  background: transparent; color: var(--text-secondary);
+  font-family: var(--font-body); font-size: 12px; font-weight: 700;
+  cursor: pointer; border-radius: calc(var(--radius-md) - 3px);
+  transition: all var(--transition);
+}
+.login-tab.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+.login-tab:hover:not(.active) { color: var(--text-primary); }
+
+</style>
+</head>
+
+<body>
+
+<!-- ═══════════════════════════════════════════ TITLEBAR -->
+<div id="titlebar">
+  <div class="titlebar-left">
+    <button class="win-btn close"    id="btn-close"   title="Закрыть"></button>
+    <button class="win-btn minimize" id="btn-minimize" title="Свернуть"></button>
+    <button class="win-btn maximize" id="btn-maximize" title="Развернуть"></button>
+  </div>
+  <div class="titlebar-title">YM Downloader</div>
+  <div class="titlebar-right" id="titlebar-right"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════ MAIN APP -->
+<div id="app">
+
+  <!-- SIDEBAR (hidden on login) -->
+  <nav id="sidebar" class="hidden">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🎵</div>
+      <div class="logo-text">YM<br><span>Downloader</span></div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Навигация</div>
+      <div class="nav-item active" data-page="home">
+        <div class="nav-icon">🏠</div> Главная
+      </div>
+      <div class="nav-item" data-page="search">
+        <div class="nav-icon">🔍</div> Поиск
+      </div>
+      <div class="nav-item" data-page="url">
+        <div class="nav-icon">🔗</div> По ссылке
+      </div>
+      <div class="nav-item" data-page="liked">
+        <div class="nav-icon">❤️</div> Мне нравится
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Загрузки</div>
+      <div class="nav-item" data-page="downloads">
+        <div class="nav-icon">⬇️</div> Очередь
+        <span class="nav-badge hidden" id="queue-badge">0</span>
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="nav-item" data-page="settings">
+        <div class="nav-icon">⚙️</div> Настройки
+      </div>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="user-card" id="user-card" title="Аккаунт">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div class="user-info">
+          <div class="user-name" id="user-name">—</div>
+          <div class="user-sub" id="user-sub">Яндекс аккаунт</div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main id="main">
+
+    <!-- ── LOGIN ── -->
+    <div id="page-login" class="page active">
+      <div class="login-logo">🎵</div>
+      <div class="login-title">Yandex Music <span>Downloader</span></div>
+      <div class="login-desc">
+        Скачивайте треки, альбомы и плейлисты в высоком качестве.
+      </div>
+
+      <div class="login-card">
+
+        <!-- Tabs -->
+        <div style="display:flex;gap:0;margin-bottom:20px;background:var(--bg-surface);border-radius:var(--radius-md);padding:3px;">
+          <button class="login-tab active" id="tab-pass" onclick="switchLoginTab('pass')">🔐 Логин + Пароль</button>
+          <button class="login-tab" id="tab-token" onclick="switchLoginTab('token')">🔑 OAuth Токен</button>
+        </div>
+
+        <!-- PASSWORD TAB -->
+        <div id="login-tab-pass">
+          <div style="margin-bottom:12px;">
+            <label class="field-label">Логин (email или телефон)</label>
+            <input type="text" id="login-input" placeholder="example@yandex.ru или +79991234567"
+                   autocomplete="off" spellcheck="false" />
+          </div>
+          <div style="margin-bottom:16px;">
+            <label class="field-label">Пароль</label>
+            <div class="input-wrap">
+              <input type="password" id="password-input" placeholder="Пароль от Яндекс аккаунта"
+                     autocomplete="current-password" />
+              <span class="input-toggle" id="pass-toggle">👁</span>
+            </div>
+          </div>
+          <div class="field-hint" style="margin-bottom:16px;">
+            ⚠️ Если включена <b>двухфакторная аутентификация</b> — используйте вкладку «OAuth Токен» или создайте
+            <a href="#" id="link-apppass">пароль приложения</a> в настройках Яндекс ID.
+          </div>
+          <button class="btn btn-primary btn-lg" id="btn-login-pass">
+            <span id="login-pass-text">Войти</span>
+            <div class="spinner hidden" id="login-pass-spinner"></div>
+          </button>
+        </div>
+
+        <!-- TOKEN TAB -->
+        <div id="login-tab-token" class="hidden">
+          <div style="margin-bottom:12px;">
+            <label class="field-label">OAuth Токен</label>
+            <div class="input-wrap">
+              <input type="password" id="token-input" placeholder="y0_AgAAAA..."
+                     autocomplete="off" spellcheck="false" />
+              <span class="input-toggle" id="token-toggle">👁</span>
+            </div>
+          </div>
+          <div class="field-hint" style="margin-bottom:4px;">
+            Как получить токен вручную:
+          </div>
+          <ol class="field-hint" style="padding-left:16px;margin-bottom:16px;line-height:2;">
+            <li>Откройте <a href="#" id="link-music">music.yandex.ru</a> в браузере и войдите</li>
+            <li>Откройте DevTools → Console (F12)</li>
+            <li>Вставьте: <code style="color:var(--gold);font-size:11px;">
+              document.cookie.match(/Session_id=([^;]+)/)?.[1]</code></li>
+            <li>ИЛИ ищите в Network заголовок <code style="color:var(--gold)">Authorization: OAuth …</code></li>
+          </ol>
+          <button class="btn btn-primary btn-lg" id="btn-login-token">
+            <span id="login-token-text">Войти по токену</span>
+            <div class="spinner hidden" id="login-token-spinner"></div>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── HOME ── -->
+    <div id="page-home" class="page">
+      <div class="home-hero">
+        <div class="home-hero-title">Добро пожаловать! 👋</div>
+        <div class="home-hero-sub" id="home-welcome-sub">Выберите, что хотите скачать сегодня</div>
+        <div class="home-hero-actions">
+          <button class="btn btn-primary" id="home-btn-search">🔍 Найти треки</button>
+          <button class="btn btn-ghost" id="home-btn-liked">❤️ Мне нравится</button>
+        </div>
+      </div>
+
+      <div class="quick-cards">
+        <div class="quick-card" data-goto="search">
+          <div class="quick-card-icon">🔍</div>
+          <div class="quick-card-title">Поиск</div>
+          <div class="quick-card-desc">Найти треки, альбомы, плейлисты</div>
+        </div>
+        <div class="quick-card" data-goto="url">
+          <div class="quick-card-icon">🔗</div>
+          <div class="quick-card-title">По ссылке</div>
+          <div class="quick-card-desc">Вставить ссылку с Яндекс Музыки</div>
+        </div>
+        <div class="quick-card" data-goto="liked">
+          <div class="quick-card-icon">❤️</div>
+          <div class="quick-card-title">Мне нравится</div>
+          <div class="quick-card-desc">Скачать лайкнутые треки</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SEARCH ── -->
+    <div id="page-search" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Поиск</div>
+          <div class="page-subtitle">Найдите треки, альбомы и плейлисты</div>
+        </div>
+      </div>
+
+      <div class="search-bar">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input" id="search-input"
+                 placeholder="Введите название трека, артиста или альбома…"
+                 autocomplete="off" spellcheck="false" />
+        </div>
+        <button class="btn btn-primary" id="btn-search">Найти</button>
+      </div>
+
+      <div class="type-tabs">
+        <div class="type-tab active" data-type="track">Треки</div>
+        <div class="type-tab" data-type="album">Альбомы</div>
+        <div class="type-tab" data-type="playlist">Плейлисты</div>
+        <div class="type-tab" data-type="artist">Артисты</div>
+      </div>
+
+      <div id="search-results"></div>
+    </div>
+
+    <!-- ── URL ── -->
+    <div id="page-url" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">По ссылке</div>
+          <div class="page-subtitle">Вставьте ссылку с Яндекс Музыки</div>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-row" style="flex-direction:column;align-items:stretch;gap:10px;">
+          <label class="field-label">Ссылка на трек, альбом или плейлист</label>
+          <div style="display:flex;gap:10px;">
+            <input type="text" id="url-input"
+                   placeholder="https://music.yandex.ru/album/12345/track/67890"
+                   style="flex:1;" autocomplete="off" spellcheck="false" />
+            <button class="btn btn-primary" id="btn-url-load">Загрузить</button>
+          </div>
+          <div class="url-examples">
+            <span class="url-chip" data-url="https://music.yandex.ru/album/123">Альбом</span>
+            <span class="url-chip" data-url="https://music.yandex.ru/album/123/track/456">Трек</span>
+            <span class="url-chip" data-url="https://music.yandex.ru/users/login/playlists/123">Плейлист</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="url-results"></div>
+    </div>
+
+    <!-- ── LIKED ── -->
+    <div id="page-liked" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">❤️ Мне нравится</div>
+          <div class="page-subtitle">Ваши лайкнутые треки</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-refresh-liked">🔄 Обновить</button>
+      </div>
+      <div id="liked-results"></div>
+    </div>
+
+    <!-- ── DOWNLOADS ── -->
+    <div id="page-downloads" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Загрузки</div>
+          <div class="page-subtitle">История и очередь загрузки</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" id="btn-open-folder">📂 Папка</button>
+          <button class="btn btn-ghost btn-sm" id="btn-clear-done">🗑 Очистить</button>
+        </div>
+      </div>
+
+      <div class="dl-stats">
+        <div class="dl-stat-card">
+          <div class="dl-stat-value teal" id="stat-done">0</div>
+          <div class="dl-stat-label">Скачано</div>
+        </div>
+        <div class="dl-stat-card">
+          <div class="dl-stat-value gold" id="stat-queue">0</div>
+          <div class="dl-stat-label">В очереди</div>
+        </div>
+        <div class="dl-stat-card">
+          <div class="dl-stat-value accent" id="stat-error">0</div>
+          <div class="dl-stat-label">Ошибок</div>
+        </div>
+      </div>
+
+      <div id="downloads-list"></div>
+    </div>
+
+    <!-- ── SETTINGS ── -->
+    <div id="page-settings" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Настройки</div>
+          <div class="page-subtitle">Параметры загрузки и интерфейса</div>
+        </div>
+        <button class="btn btn-primary btn-sm" id="btn-save-settings">💾 Сохранить</button>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-group-title">Загрузка</div>
+
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-label">Папка для сохранения</div>
+            <div class="settings-row-desc">Куда сохранять скачанные треки</div>
+          </div>
+          <div class="settings-row-value" id="settings-output-dir">~/Downloads</div>
+          <button class="btn btn-ghost btn-sm" id="btn-choose-folder">Выбрать</button>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-label">Шаблон имени файла</div>
+            <div class="settings-row-desc">Доступные теги: {artist}, {title}, {album}, {year}, {id}</div>
+          </div>
+          <input type="text" id="settings-filename" value="{artist} - {title}"
+                 style="width:200px;" />
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-label">Одновременные загрузки</div>
+            <div class="settings-row-desc">Количество параллельных загрузок</div>
+          </div>
+          <select id="settings-concurrency">
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+            <option value="5">5</option>
+          </select>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-label">Скачивать обложку (ID3)</div>
+            <div class="settings-row-desc">Встраивать обложку альбома в MP3 теги</div>
+          </div>
+          <div class="toggle on" id="toggle-covers" data-key="downloadCovers"></div>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-label">Пропускать существующие</div>
+            <div class="settings-row-desc">Не скачивать, если файл уже существует</div>
+          </div>
+          <div class="toggle on" id="toggle-skip-existing" data-key="skipExisting"></div>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-group-title">Аккаунт</div>
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-label">OAuth токен</div>
+            <div class="settings-row-desc">Токен авторизации Яндекс Музыки</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="btn-logout">Выйти</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// RENDERER
+// ═══════════════════════════════════════════════════════════
+const api = window.api;
+let token = null;
+let settings = { outputDir: '', filenameTemplate: '{artist} - {title}', concurrency: 2, downloadCovers: true, skipExisting: true };
+let currentUser = null;
+let searchType = 'track';
+let downloadQueue = [];
+let downloadHistory = [];
+let activeCount = 0;
+
+// ─── WINDOW CONTROLS ───────────────────────────────────────
+document.getElementById('btn-close').onclick = () => api.close();
+document.getElementById('btn-minimize').onclick = () => api.minimize();
+document.getElementById('btn-maximize').onclick = () => api.maximize();
+
+// ─── TOAST ─────────────────────────────────────────────────
+function toast(msg, type = 'info', dur = 3500) {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+  el.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => {
+    el.classList.add('hiding');
+    setTimeout(() => el.remove(), 200);
+  }, dur);
+}
+
+// ─── NAVIGATION ────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const page = document.getElementById(`page-${name}`);
+  if (page) page.classList.add('active');
+  const navItem = document.querySelector(`[data-page="${name}"]`);
+  if (navItem) navItem.classList.add('active');
+
+  if (name === 'liked' && !document.getElementById('liked-results').innerHTML) loadLiked();
+  if (name === 'downloads') renderDownloads();
+}
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => showPage(item.dataset.page));
+});
+
+document.querySelectorAll('.quick-card').forEach(card => {
+  card.addEventListener('click', () => showPage(card.dataset.goto));
+});
+
+document.getElementById('home-btn-search').onclick = () => showPage('search');
+document.getElementById('home-btn-liked').onclick = () => showPage('liked');
+
+// ─── LOGIN ─────────────────────────────────────────────────
+
+// Tab switching
+function switchLoginTab(tab) {
+  document.getElementById('login-tab-pass').classList.toggle('hidden', tab !== 'pass');
+  document.getElementById('login-tab-token').classList.toggle('hidden', tab !== 'token');
+  document.getElementById('tab-pass').classList.toggle('active', tab === 'pass');
+  document.getElementById('tab-token').classList.toggle('active', tab === 'token');
+}
+
+// Password visibility toggles
+document.getElementById('pass-toggle').onclick = () => {
+  const i = document.getElementById('password-input');
+  i.type = i.type === 'password' ? 'text' : 'password';
+};
+document.getElementById('token-toggle').onclick = () => {
+  const i = document.getElementById('token-input');
+  i.type = i.type === 'password' ? 'text' : 'password';
+};
+
+// Links
+document.getElementById('link-apppass')?.addEventListener('click', e => {
+  e.preventDefault();
+  // open external via shell
+});
+document.getElementById('link-music')?.addEventListener('click', e => { e.preventDefault(); });
+
+// Enter key support
+document.getElementById('password-input').addEventListener('keydown', e => { if (e.key === 'Enter') doLoginPassword(); });
+document.getElementById('token-input').addEventListener('keydown',    e => { if (e.key === 'Enter') doLoginToken(); });
+document.getElementById('login-input').addEventListener('keydown',    e => { if (e.key === 'Enter') doLoginPassword(); });
+
+document.getElementById('btn-login-pass').addEventListener('click', doLoginPassword);
+document.getElementById('btn-login-token').addEventListener('click', doLoginToken);
+
+async function doLoginPassword() {
+  const login    = document.getElementById('login-input').value.trim();
+  const password = document.getElementById('password-input').value;
+  if (!login)    { toast('Введите логин', 'error'); return; }
+  if (!password) { toast('Введите пароль', 'error'); return; }
+
+  const btn = document.getElementById('btn-login-pass');
+  const txt = document.getElementById('login-pass-text');
+  const sp  = document.getElementById('login-pass-spinner');
+  btn.disabled = true; txt.textContent = 'Вход…'; sp.classList.remove('hidden');
+
+  const res = await api.authLoginPassword({ login, password });
+
+  btn.disabled = false; txt.textContent = 'Войти'; sp.classList.add('hidden');
+
+  if (!res.success) {
+    let hint = res.error || 'Неизвестная ошибка';
+    if (/captcha/i.test(hint)) hint = 'Яндекс требует капчу — попробуйте через OAuth токен';
+    if (/2fa|two.factor|totp/i.test(hint)) hint = 'Включена 2FA — используйте пароль приложения или OAuth токен';
+    toast(`Ошибка: ${hint}`, 'error', 6000);
+    return;
+  }
+
+  token = res.token;
+  currentUser = res.user;
+  await api.saveSettings({ token: res.token });
+  const s = await api.getSettings();
+  settings = { ...settings, ...s };
+  initUI();
+  toast(`Добро пожаловать, ${currentUser.name}! 👋`, 'success');
+}
+
+async function doLoginToken() {
+  const t = document.getElementById('token-input').value.trim();
+  if (!t) { toast('Введите токен', 'error'); return; }
+
+  const btn = document.getElementById('btn-login-token');
+  const txt = document.getElementById('login-token-text');
+  const sp  = document.getElementById('login-token-spinner');
+  btn.disabled = true; txt.textContent = 'Проверка…'; sp.classList.remove('hidden');
+
+  const res = await api.authCheck(t);
+
+  btn.disabled = false; txt.textContent = 'Войти по токену'; sp.classList.add('hidden');
+
+  if (!res.success) {
+    toast(`Ошибка: ${res.error}`, 'error', 6000);
+    return;
+  }
+
+  token = t;
+  currentUser = res.user;
+  await api.saveSettings({ token: t });
+  const s = await api.getSettings();
+  settings = { ...settings, ...s };
+  initUI();
+  toast(`Добро пожаловать, ${currentUser.name}! 👋`, 'success');
+}
+
+// Auto-login on startup
+(async () => {
+  try {
+    const s = await api.getSettings();
+    if (s?.token) {
+      settings = { ...settings, ...s };
+      const res = await api.authCheck(s.token);
+      if (res.success) {
+        token = s.token;
+        currentUser = res.user;
+        initUI();
+      }
+    }
+  } catch (e) { console.error('Auto-login failed:', e); }
+})();
+
+// ─── SEARCH ────────────────────────────────────────────────
+document.getElementById('btn-search').onclick = doSearch;
+document.getElementById('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+document.querySelectorAll('.type-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.type-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    searchType = tab.dataset.type;
+  });
+});
+
+async function doSearch() {
+  if (!token) return;
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) { toast('Введите запрос', 'error'); return; }
+
+  const container = document.getElementById('search-results');
+  container.innerHTML = `<div class="empty-state"><div class="spinner"></div><div class="empty-title">Поиск…</div></div>`;
+
+  const res = await api.search({ token, query: q, type: searchType });
+
+  if (!res.success) { container.innerHTML = errorHTML(res.error); return; }
+
+  const result = res.result;
+  if (searchType === 'track') {
+    const tracks = result.tracks?.results || [];
+    renderTrackList(container, tracks, 'search');
+  } else if (searchType === 'album') {
+    renderAlbumGrid(container, result.albums?.results || []);
+  } else if (searchType === 'playlist') {
+    renderPlaylistGrid(container, result.playlists?.results || []);
+  } else if (searchType === 'artist') {
+    renderArtistGrid(container, result.artists?.results || []);
+  }
+}
+
+// ─── URL ───────────────────────────────────────────────────
+document.querySelectorAll('.url-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.getElementById('url-input').value = chip.dataset.url;
+  });
+});
+
+document.getElementById('btn-url-load').onclick = doLoadUrl;
+document.getElementById('url-input').addEventListener('keydown', e => { if (e.key === 'Enter') doLoadUrl(); });
+
+async function doLoadUrl() {
+  if (!token) return;
+  const url = document.getElementById('url-input').value.trim();
+  if (!url) { toast('Вставьте ссылку', 'error'); return; }
+
+  const container = document.getElementById('url-results');
+  container.innerHTML = `<div class="empty-state"><div class="spinner"></div><div class="empty-title">Загрузка…</div></div>`;
+
+  const res = await api.parseUrl({ token, url });
+  if (!res.success) { container.innerHTML = errorHTML(res.error); return; }
+
+  if (res.type === 'track') {
+    renderTrackList(container, Array.isArray(res.result) ? res.result : [res.result], 'url');
+  } else if (res.type === 'album') {
+    const tracks = (res.result.volumes || []).flat();
+    container.innerHTML = `<div class="page-title" style="margin-bottom:12px;">${res.result.title}</div>`;
+    renderTrackList(container, tracks, 'url', true);
+  } else if (res.type === 'playlist') {
+    const tracks = (res.result.tracks || []).map(t => t.track || t);
+    container.innerHTML = `<div class="page-title" style="margin-bottom:12px;">${res.result.title}</div>`;
+    renderTrackList(container, tracks, 'url', true);
+  }
+}
+
+// ─── LIKED ─────────────────────────────────────────────────
+document.getElementById('btn-refresh-liked').onclick = loadLiked;
+
+async function loadLiked() {
+  if (!token) return;
+  const container = document.getElementById('liked-results');
+  container.innerHTML = `<div class="empty-state"><div class="spinner"></div><div class="empty-title">Загрузка треков…</div></div>`;
+
+  const res = await api.getLikedTracks({ token });
+  if (!res.success) { container.innerHTML = errorHTML(res.error); return; }
+  renderTrackList(container, res.result, 'liked', true);
+}
+
+// ─── RENDER TRACKS ─────────────────────────────────────────
+function formatDuration(ms) {
+  if (!ms) return '—';
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+}
+
+function getCoverUrl(track) {
+  const uri = track.coverUri || track.albums?.[0]?.coverUri;
+  if (!uri) return null;
+  return 'https://' + uri.replace('%%', '100x100');
+}
+
+function renderTrackList(container, tracks, source, showSelectAll = false) {
+  if (!tracks.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🎵</div><div class="empty-title">Ничего не найдено</div></div>`;
+    return;
+  }
+
+  let selected = new Set();
+
+  const wrapper = document.createElement('div');
+
+  // Header with select all + download selected
+  wrapper.innerHTML = `
+    <div class="tracks-header">
+      <div class="tracks-count">${tracks.length} треков</div>
+      <div class="tracks-actions">
+        ${showSelectAll ? `<button class="btn btn-ghost btn-sm" id="btn-select-all-${source}">Выбрать все</button>` : ''}
+        <button class="btn btn-primary btn-sm" id="btn-dl-selected-${source}" disabled>
+          ⬇ Скачать выбранные
+        </button>
+      </div>
+    </div>
+    <div class="track-list scroll-area" id="track-list-${source}"></div>
+  `;
+
+  container.innerHTML = '';
+  container.appendChild(wrapper);
+
+  if (showSelectAll) {
+    document.getElementById(`btn-select-all-${source}`).addEventListener('click', () => {
+      if (selected.size === tracks.length) {
+        selected.clear();
+      } else {
+        tracks.forEach(t => selected.add(t.id));
+      }
+      renderItems();
+      updateDlBtn();
+    });
+  }
+
+  const dlBtn = document.getElementById(`btn-dl-selected-${source}`);
+  dlBtn.addEventListener('click', () => {
+    const sel = tracks.filter(t => selected.has(t.id));
+    if (!sel.length) return;
+    queueTracks(sel);
+    showPage('downloads');
+    toast(`Добавлено в очередь: ${sel.length} треков`, 'success');
+  });
+
+  function updateDlBtn() {
+    dlBtn.disabled = selected.size === 0;
+    dlBtn.textContent = selected.size
+      ? `⬇ Скачать (${selected.size})`
+      : '⬇ Скачать выбранные';
+  }
+
+  function renderItems() {
+    const list = document.getElementById(`track-list-${source}`);
+    list.innerHTML = '';
+    tracks.forEach(track => {
+      const item = document.createElement('div');
+      item.className = `track-item${selected.has(track.id) ? ' selected' : ''}`;
+      item.dataset.id = track.id;
+
+      const cover = getCoverUrl(track);
+      const artists = (track.artists || []).map(a => a.name).join(', ');
+      const title = track.title || 'Unknown';
+      const dur = formatDuration(track.durationMs);
+
+      item.innerHTML = `
+        <div class="track-check">${selected.has(track.id) ? '✓' : ''}</div>
+        <div class="track-cover">
+          ${cover
+            ? `<img src="${cover}" loading="lazy" alt="" />`
+            : `<div class="track-cover-placeholder">🎵</div>`}
+        </div>
+        <div class="track-info">
+          <div class="track-title">${escHtml(title)}</div>
+          <div class="track-artist">${escHtml(artists)}</div>
+        </div>
+        <div class="track-duration">${dur}</div>
+        <div class="track-actions">
+          <button class="btn btn-icon btn-dl-one" title="Скачать" data-id="${track.id}">⬇</button>
+        </div>
+      `;
+
+      item.addEventListener('click', e => {
+        if (e.target.closest('.track-actions')) return;
+        if (selected.has(track.id)) selected.delete(track.id);
+        else selected.add(track.id);
+        renderItems();
+        updateDlBtn();
+      });
+
+      item.querySelector('.btn-dl-one').addEventListener('click', e => {
+        e.stopPropagation();
+        queueTracks([track]);
+        showPage('downloads');
+        toast(`Добавлено: ${title}`, 'success');
+      });
+
+      list.appendChild(item);
+    });
+  }
+
+  renderItems();
+}
+
+// ─── ALBUM/PLAYLIST/ARTIST GRIDS ───────────────────────────
+function renderAlbumGrid(container, albums) {
+  if (!albums.length) { container.innerHTML = emptyHTML('Альбомы не найдены'); return; }
+  container.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;">
+      ${albums.map(a => `
+        <div class="quick-card" style="cursor:pointer;" data-album-id="${a.id}">
+          <div style="width:100%;aspect-ratio:1;border-radius:8px;overflow:hidden;margin-bottom:8px;background:var(--bg-surface);">
+            ${a.coverUri
+              ? `<img src="https://${a.coverUri.replace('%%','160x160')}" style="width:100%;height:100%;object-fit:cover;" />`
+              : `<div style="width:100%;height:100%;display:grid;place-items:center;font-size:32px;">🎵</div>`}
+          </div>
+          <div class="quick-card-title">${escHtml(a.title)}</div>
+          <div class="quick-card-desc">${(a.artists||[]).map(x=>x.name).join(', ')}</div>
+        </div>
+      `).join('')}
+    </div>`;
+
+  container.querySelectorAll('[data-album-id]').forEach(el => {
+    el.addEventListener('click', async () => {
+      el.style.opacity = '0.6';
+      const res = await api.getAlbum({ token, albumId: el.dataset.albumId });
+      el.style.opacity = '1';
+      if (!res.success) { toast(res.error, 'error'); return; }
+      const tracks = (res.result.volumes || []).flat();
+      const urlContainer = document.getElementById('url-results');
+      document.getElementById('url-input').value = `https://music.yandex.ru/album/${el.dataset.albumId}`;
+      showPage('url');
+      urlContainer.innerHTML = `<div class="page-title" style="margin-bottom:12px;">${res.result.title}</div>`;
+      renderTrackList(urlContainer, tracks, 'url', true);
+    });
+  });
+}
+
+function renderPlaylistGrid(container, playlists) {
+  if (!playlists.length) { container.innerHTML = emptyHTML('Плейлисты не найдены'); return; }
+  container.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;">
+      ${playlists.map(p => `
+        <div class="quick-card" data-pl-uid="${p.uid}" data-pl-kind="${p.kind}">
+          <div style="width:100%;aspect-ratio:1;border-radius:8px;overflow:hidden;margin-bottom:8px;background:var(--bg-surface);">
+            ${p.cover?.uri
+              ? `<img src="https://${p.cover.uri.replace('%%','160x160')}" style="width:100%;height:100%;object-fit:cover;" />`
+              : `<div style="width:100%;height:100%;display:grid;place-items:center;font-size:32px;">📋</div>`}
+          </div>
+          <div class="quick-card-title">${escHtml(p.title)}</div>
+          <div class="quick-card-desc">${p.trackCount || 0} треков</div>
+        </div>
+      `).join('')}
+    </div>`;
+
+  container.querySelectorAll('[data-pl-uid]').forEach(el => {
+    el.addEventListener('click', async () => {
+      el.style.opacity = '0.6';
+      const res = await api.getPlaylist({ token, uid: el.dataset.plUid, kind: el.dataset.plKind });
+      el.style.opacity = '1';
+      if (!res.success) { toast(res.error, 'error'); return; }
+      const tracks = (res.result.tracks || []).map(t => t.track || t);
+      const urlContainer = document.getElementById('url-results');
+      showPage('url');
+      urlContainer.innerHTML = `<div class="page-title" style="margin-bottom:12px;">${res.result.title}</div>`;
+      renderTrackList(urlContainer, tracks, 'url', true);
+    });
+  });
+}
+
+function renderArtistGrid(container, artists) {
+  if (!artists.length) { container.innerHTML = emptyHTML('Артисты не найдены'); return; }
+  container.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;">
+      ${artists.map(a => `
+        <div class="quick-card" style="text-align:center;">
+          <div style="width:80px;height:80px;border-radius:50%;overflow:hidden;margin:0 auto 10px;background:var(--bg-surface);">
+            ${a.cover?.uri
+              ? `<img src="https://${a.cover.uri.replace('%%','160x160')}" style="width:100%;height:100%;object-fit:cover;" />`
+              : `<div style="width:100%;height:100%;display:grid;place-items:center;font-size:28px;">🎤</div>`}
+          </div>
+          <div class="quick-card-title">${escHtml(a.name)}</div>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+// ─── DOWNLOAD QUEUE ────────────────────────────────────────
+function queueTracks(tracks) {
+  for (const t of tracks) {
+    if (!downloadQueue.find(q => q.id === t.id) && !downloadHistory.find(h => h.id === t.id)) {
+      downloadQueue.push({ ...t, status: 'queued', progress: 0 });
+    }
+  }
+  updateQueueBadge();
+  renderDownloads();
+  processQueue();
+}
+
+async function processQueue() {
+  const concurrency = parseInt(settings.concurrency || 2);
+  while (activeCount < concurrency) {
+    const next = downloadQueue.find(t => t.status === 'queued');
+    if (!next) break;
+    next.status = 'downloading';
+    activeCount++;
+    renderDownloads();
+
+    const outputDir = settings.outputDir || (await api.getSettings()).outputDir || require?.('os')?.homedir?.() || '.';
+    api.downloadTrack({
+      token,
+      track: next,
+      outputDir: settings.outputDir || '.',
+      filenameTemplate: settings.filenameTemplate || '{artist} - {title}',
+    }).then(res => {
+      activeCount = Math.max(0, activeCount - 1);
+      const idx = downloadQueue.findIndex(t => t.id === next.id);
+      if (idx !== -1) downloadQueue.splice(idx, 1);
+      if (res.success) {
+        downloadHistory.unshift({ ...next, status: 'done', filePath: res.filePath });
+        toast(`Скачано: ${next.title}`, 'success');
+      } else {
+        downloadHistory.unshift({ ...next, status: 'error', error: res.error });
+        toast(`Ошибка: ${next.title}`, 'error');
+      }
+      updateQueueBadge();
+      renderDownloads();
+      processQueue();
+    });
+  }
+}
+
+// Progress events
+api.onDownloadProgress(({ trackId, status, progress, filePath, error }) => {
+  const t = downloadQueue.find(t => t.id === trackId);
+  if (t) {
+    t.status = status;
+    t.progress = progress || 0;
+    if (filePath) t.filePath = filePath;
+    if (error) t.error = error;
+  }
+  // Only re-render if on downloads page
+  if (document.getElementById('page-downloads').classList.contains('active')) {
+    renderDownloads();
+  }
+});
+
+function updateQueueBadge() {
+  const badge = document.getElementById('queue-badge');
+  const n = downloadQueue.length;
+  badge.textContent = n;
+  badge.classList.toggle('hidden', n === 0);
+}
+
+function renderDownloads() {
+  const done = downloadHistory.filter(t => t.status === 'done').length;
+  const errors = downloadHistory.filter(t => t.status === 'error').length;
+  const queue = downloadQueue.length;
+
+  document.getElementById('stat-done').textContent = done;
+  document.getElementById('stat-queue').textContent = queue;
+  document.getElementById('stat-error').textContent = errors;
+
+  const list = document.getElementById('downloads-list');
+  const all = [...downloadQueue, ...downloadHistory];
+
+  if (!all.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">⬇️</div><div class="empty-title">Очередь пуста</div><div class="empty-desc">Найдите треки и добавьте их в очередь загрузки</div></div>`;
+    return;
+  }
+
+  list.innerHTML = `<div class="track-list">
+    ${all.map(t => {
+      const artists = (t.artists || []).map(a => a.name).join(', ');
+      const cover = getCoverUrl(t);
+      const statusBadge = {
+        done: `<span class="status-badge done">✓ Готово</span>`,
+        error: `<span class="status-badge error">✕ Ошибка</span>`,
+        queued: `<span class="status-badge queued">В очереди</span>`,
+        downloading: `<span class="status-badge downloading">↓ ${t.progress || 0}%</span>`,
+      }[t.status] || '';
+
+      return `<div class="track-item ${t.status}" data-id="${t.id}">
+        <div></div>
+        <div class="track-cover">
+          ${cover ? `<img src="${cover}" loading="lazy" />` : `<div class="track-cover-placeholder">🎵</div>`}
+        </div>
+        <div class="track-info">
+          <div class="track-title">${escHtml(t.title || 'Unknown')}</div>
+          <div class="track-artist">${escHtml(artists)}</div>
+          ${t.error ? `<div style="font-size:11px;color:var(--accent);">${escHtml(t.error)}</div>` : ''}
+        </div>
+        <div>${statusBadge}</div>
+        <div class="track-actions">
+          ${t.status === 'done'
+            ? `<button class="btn btn-icon btn-show-file" title="Показать файл" data-path="${escHtml(t.filePath||'')}">📂</button>`
+            : t.status === 'queued' || t.status === 'downloading'
+            ? `<button class="btn btn-icon btn-cancel" data-id="${t.id}" title="Отмена">✕</button>`
+            : ''}
+        </div>
+        ${t.status === 'downloading' ? `<div class="track-progress"><div class="track-progress-fill" style="width:${t.progress||0}%"></div></div>` : ''}
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  list.querySelectorAll('.btn-show-file').forEach(btn => {
+    btn.addEventListener('click', () => api.openFile(btn.dataset.path));
+  });
+  list.querySelectorAll('.btn-cancel').forEach(btn => {
+    btn.addEventListener('click', () => {
+      api.cancelDownload(Number(btn.dataset.id));
+      const idx = downloadQueue.findIndex(t => t.id === Number(btn.dataset.id));
+      if (idx !== -1) downloadQueue.splice(idx, 1);
+      renderDownloads();
+      updateQueueBadge();
+    });
+  });
+}
+
+document.getElementById('btn-open-folder').onclick = () => {
+  const dir = settings.outputDir || '.';
+  api.openFolder(dir);
+};
+
+document.getElementById('btn-clear-done').onclick = () => {
+  downloadHistory = downloadHistory.filter(t => t.status !== 'done' && t.status !== 'error');
+  renderDownloads();
+  toast('Очищено', 'info');
+};
+
+// ─── SETTINGS ──────────────────────────────────────────────
+document.getElementById('btn-choose-folder').onclick = async () => {
+  const dir = await api.chooseFolder();
+  if (dir) { settings.outputDir = dir; updateFolderDisplay(dir); }
+};
+
+function updateFolderDisplay(dir) {
+  const el = document.getElementById('settings-output-dir');
+  el.textContent = dir.length > 35 ? '…' + dir.slice(-35) : dir;
+  el.title = dir;
+}
+
+document.querySelectorAll('.toggle').forEach(toggle => {
+  toggle.addEventListener('click', () => {
+    toggle.classList.toggle('on');
+    const key = toggle.dataset.key;
+    if (key) settings[key] = toggle.classList.contains('on');
+  });
+});
+
+function setToggle(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('on', !!val);
+  const key = el.dataset.key;
+  if (key) settings[key] = !!val;
+}
+
+document.getElementById('btn-save-settings').onclick = async () => {
+  settings.filenameTemplate = document.getElementById('settings-filename').value || '{artist} - {title}';
+  settings.concurrency = parseInt(document.getElementById('settings-concurrency').value);
+  await api.saveSettings(settings);
+  toast('Настройки сохранены', 'success');
+};
+
+document.getElementById('btn-logout').onclick = async () => {
+  await api.saveSettings({ token: '' });
+  token = null; currentUser = null;
+  document.getElementById('sidebar').classList.add('hidden');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-login').classList.add('active');
+  tokenInput.value = '';
+  toast('Вы вышли из аккаунта', 'info');
+};
+
+// ─── HELPERS ───────────────────────────────────────────────
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function errorHTML(msg) {
+  return `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Ошибка</div><div class="empty-desc">${escHtml(msg)}</div></div>`;
+}
+
+function emptyHTML(msg) {
+  return `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">${escHtml(msg)}</div></div>`;
+}
+</script>
+</body>
+</html>
