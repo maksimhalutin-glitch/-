@@ -35,7 +35,7 @@
     },
     "mac": {
       "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
-      "artifactName": "YandexMusicDownloader.${ext}"
+      "artifactName": "YandexMusicDownloader-${arch}.${ext}"
     },
     "files": ["src/**/*", "package.json"]
   }
