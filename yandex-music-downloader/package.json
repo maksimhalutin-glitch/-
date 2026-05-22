@@ -2,12 +2,14 @@
   "name": "yandex-music-downloader",
   "version": "1.0.0",
   "description": "Premium Yandex Music Downloader",
+  "author": "maksimhalutin-glitch",
+  "repository": "https://github.com/maksimhalutin-glitch/-",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "build:win":   "electron-builder --win",
-    "build:mac":   "electron-builder --mac",
-    "build:linux": "electron-builder --linux"
+    "build:win":   "electron-builder --win --publish never",
+    "build:mac":   "electron-builder --mac --publish never",
+    "build:linux": "electron-builder --linux --publish never"
   },
   "dependencies": {
     "axios": "^1.6.2",
@@ -21,33 +23,20 @@
   "build": {
     "appId": "com.ymd.downloader",
     "productName": "Yandex Music Downloader",
-    "directories": {
-      "output": "dist"
-    },
+    "publish": "never",
+    "directories": { "output": "dist" },
     "win": {
       "target": [{ "target": "nsis", "arch": ["x64"] }],
-      "artifactName": "YandexMusicDownloader-Setup-${version}.${ext}"
+      "artifactName": "YandexMusicDownloader-Setup.${ext}"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "installerIcon": "assets/icon.ico",
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "allowToChangeInstallationDirectory": true
     },
     "mac": {
       "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
-      "artifactName": "YandexMusicDownloader-${version}.${ext}",
-      "category": "public.app-category.music"
+      "artifactName": "YandexMusicDownloader.${ext}"
     },
-    "linux": {
-      "target": [{ "target": "AppImage", "arch": ["x64"] }],
-      "artifactName": "YandexMusicDownloader-${version}.${ext}",
-      "category": "Audio"
-    },
-    "files": [
-      "src/**/*",
-      "package.json"
-    ]
+    "files": ["src/**/*", "package.json"]
   }
 }
